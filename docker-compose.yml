@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: omniflow
+      POSTGRES_PASSWORD: omniflow
+      POSTGRES_DB: omniflow
+    volumes:
+      - omniflow-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U omniflow"]
+      interval: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://omniflow:omniflow@db:5432/omniflow
+      SECRET_KEY: ${SECRET_KEY:-change-me-before-deploying}
+      CORS_ORIGINS: http://localhost:5173
+      DEMO_MODE: ${DEMO_MODE:-true}
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-omniflow-verify}
+      WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:-}
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:8000
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+volumes:
+  omniflow-db:
